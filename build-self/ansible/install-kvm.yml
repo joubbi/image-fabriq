@@ -1,0 +1,54 @@
+---
+# Install qemu-kvm
+# The package qemu-kvm is enough to create images,
+# but we probably want to be able to run the images as well.
+# So we install additional packages for that.
+
+- name: Install qemu-kvm
+  yum:
+    name:
+      - qemu-kvm
+      - virt-install
+      - libguestfs
+      - libvirt-client
+      - libvirt-daemon-config-network
+      - libvirt-daemon-kvm
+    state: latest
+  become: yes
+  when: ansible_facts['os_family'] == "RedHat"
+
+# In order to be able to control KVM as a non root user
+# (virt-viewer as centos over SSH) we need to modify libvirtd.conf
+- name: Fix unix_sock_group in /etc/libvirt/libvirtd.conf
+  ansible.builtin.lineinfile:
+    path: /etc/libvirt/libvirtd.conf
+    regexp: 'unix_sock_group'
+    line: unix_sock_group = "libvirt"
+  become: yes
+
+- name: Fix unix_sock_rw_perms in /etc/libvirt/libvirtd.conf
+  ansible.builtin.lineinfile:
+    path: /etc/libvirt/libvirtd.conf
+    regexp: 'unix_sock_rw_perms'
+    line: unix_sock_rw_perms = "0770"
+  become: yes
+
+- name: Fix auth_unix_rw in /etc/libvirt/libvirtd.conf
+  ansible.builtin.lineinfile:
+    path: /etc/libvirt/libvirtd.conf
+    regexp: 'auth_unix_rw'
+    line: auth_unix_rw = "none"
+  become: yes
+
+- name: Start service libvirtd
+  ansible.builtin.service:
+    name: libvirtd
+    enabled: yes
+  become: yes
+
+- name: Add user centos to libvirt group
+  ansible.builtin.user:
+    name: centos
+    groups: libvirt
+    append: yes
+  become: yes

@@ -1,0 +1,53 @@
+{
+    "variables": {
+        "aws_access_key": "",
+        "aws_secret_key": "",
+        "ami_name": "centos7-hardened {{timestamp}}",
+        "aws_region": "eu-west-1",
+        "ssh_username": "centos",
+        "vpc_id": "",
+        "subnet_id": ""
+    },
+    "builders": [{
+        "type": "amazon-ebs",
+        "access_key": "{{user `aws_access_key`}}",
+        "secret_key": "{{user `aws_secret_key`}}",
+        "region": "{{user `aws_region`}}",
+        "instance_type": "t2.medium",
+        "force_deregister": "true",
+        "ssh_username": "{{user `ssh_username`}}",
+        "communicator": "ssh",
+        "associate_public_ip_address": true,
+        "subnet_id": "{{user `subnet_id`}}",
+        "ami_name": "{{user `ami_name`}}",
+        "source_ami_filter": {
+            "filters": {
+                "virtualization-type": "hvm",
+                "name": "CentOS Linux 7 x86_64 HVM EBS *",
+                "root-device-type": "ebs"
+            },
+            "owners": ["679593333241"],
+            "most_recent": true
+        },
+        "run_tags": {
+            "Name": "packer-build-image"
+        }
+    }],
+    "provisioners": [{
+            "type": "shell",
+            "inline": "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done"
+        },
+        {
+            "type": "ansible",
+            "playbook_file": "../ansible/yum.yml"
+        },
+        {
+            "type": "ansible",
+            "playbook_file": "../ansible/hardening.yml"
+        },
+        {
+            "type": "ansible",
+            "playbook_file": "../ansible/aide.yml"
+        
+        }]
+}

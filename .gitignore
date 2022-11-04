@@ -1,0 +1,9 @@
+# Ignore the cache for packer
+packer_cache/
+port/
+
+# Ignore the built images
+image/
+
+# Ignore iso files
+*.iso

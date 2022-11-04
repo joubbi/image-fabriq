@@ -1,0 +1,18 @@
+---
+# Create a nice SSH login banner so that we know where we have landed.
+
+- name: Copy image-fabriq banner to /etc/motd
+  ansible.builtin.copy:
+    src: files/motd
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Enable motd in sshd_config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    state: absent
+    regexp: 'PrintMotd'
+  become: yes

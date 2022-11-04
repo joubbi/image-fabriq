@@ -1,0 +1,16 @@
+---
+- name: Install image-fabriq and dependencies
+  hosts: default
+
+  tasks:
+    - name: Install HashiCorp Packer
+      include_tasks: install-packer.yml
+
+    - name: Install Ansible
+      include_tasks: install-ansible.yml
+
+    - name: Install KVM
+      include_tasks: install-kvm.yml
+
+    - name: Unpack image-fabriq
+      include_tasks: unpack-image-fabriq.yml

@@ -1,0 +1,65 @@
+{
+  "variables": {
+    "vm_name": "rocky8.qcow2"
+  },
+  "builders": [
+    {
+      "accelerator": "kvm",
+      "qemu_binary": "/usr/bin/kvm",
+      "boot_command": [
+        "<up><wait><tab><wait> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky8-ks.cfg<enter><wait>"
+      ],
+      "boot_wait": "5s",
+      "cpus": "2",
+      "memory": "2048",
+      "disk_interface": "virtio-scsi",
+      "disk_size": "51200M",
+      "disk_compression": "true",
+      "format": "qcow2",
+      "headless": true,
+      "host_port_max": 2229,
+      "host_port_min": 2222,
+      "http_directory": "http",
+      "http_port_max": 10089,
+      "http_port_min": 10082,
+      "iso_checksum": "sha256:0081f8b969d0cef426530f6d618b962c7a01e71eb12a40581a83241f22dfdc25",
+      "iso_url": "../iso/Rocky-8.5-x86_64-dvd1.iso",
+      "iso_target_path": "../iso/",
+      "net_device": "virtio-net",
+      "output_directory": "image",
+      "shutdown_command": "echo 'packer' | shutdown -P now",
+      "ssh_password": "Changeme123",
+      "ssh_port": 22,
+      "ssh_timeout": "1200s",
+      "ssh_username": "root",
+      "type": "qemu",
+      "vm_name": "{{user `vm_name`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/create_user01.yml"
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/yum.yml"
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/create_log.yml",
+      "extra_arguments": ["--extra-vars", "vm_name={{ user `vm_name` }}"]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "checksum",
+      "checksum_types": ["sha512"],
+      "output": "image/{{user `vm_name`}}_{{.ChecksumType}}.checksum"
+    }
+  ]
+}
+

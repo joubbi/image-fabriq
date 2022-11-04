@@ -1,0 +1,5 @@
+collections:
+- name: devsec-hardening-7.3.0.tar.gz
+  version: 7.3.0
+- name: community-crypto-1.5.0.tar.gz
+  version: 1.5.0

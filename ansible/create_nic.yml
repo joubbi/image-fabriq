@@ -1,0 +1,13 @@
+---
+- name: Create dhcp enabled network interface
+  hosts: default
+  become: yes
+
+  tasks:
+    - name: Create dhcp enabled network interface
+      copy:
+        src: enp1s0
+        dest: /etc/network/interfaces.d/enp1s0
+        owner: root
+        group: root
+        mode: '0600'

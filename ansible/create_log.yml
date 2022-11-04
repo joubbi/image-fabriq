@@ -1,0 +1,30 @@
+---
+- name: Create log of image-fabriq version
+  hosts: default
+
+  tasks:
+    - name: Get image-fabriq component versions
+      ansible.builtin.command: ../show-info.sh
+      delegate_to: 127.0.0.1
+      register: imagefabriq_info
+
+    - name: Copy image-fabriq component versions to /var/log/image-fabriq.log
+      ansible.builtin.copy:
+        content: "{{ imagefabriq_info.stdout }}"
+        dest: /var/log/image-fabriq.log
+        owner: root
+        mode: '0600'
+      become: yes
+
+    - name: Write Ansible variables to /var/log/image-fabriq.log
+      blockinfile:
+        path: /var/log/image-fabriq.log
+        block: |
+
+          packer_builder_type:
+          "{{ packer_builder_type }}"
+
+          Name of image:
+          "{{ vm_name }}"
+
+      become: yes

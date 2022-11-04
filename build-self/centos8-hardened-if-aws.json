@@ -1,0 +1,72 @@
+{
+    "variables": {
+        "aws_access_key": "",
+        "aws_secret_key": "",
+        "ami_name": "centos8-hardened-image-fabriq {{timestamp}}",
+        "aws_region": "eu-north-1",
+        "ssh_username": "centos",
+        "vpc_id": "",
+        "subnet_id": ""
+    },
+    "builders": [{
+        "type": "amazon-ebs",
+        "access_key": "{{user `aws_access_key`}}",
+        "secret_key": "{{user `aws_secret_key`}}",
+        "region": "{{user `aws_region`}}",
+        "instance_type": "t3.small",
+        "force_deregister": "true",
+        "ssh_username": "{{user `ssh_username`}}",
+        "communicator": "ssh",
+        "associate_public_ip_address": true,
+        "subnet_id": "{{user `subnet_id`}}",
+        "ami_name": "{{user `ami_name`}}",
+	"ami_description": "Hardened CentOS 8 containing image-fabriq. Built using Packer on {{isotime | clean_resource_name}}.",
+        "source_ami": "ami-0e201bc52c64d7b5a",
+        "run_tags": {
+            "Name": "packer-build-image"
+        },
+	"launch_block_device_mappings": [{
+        "device_name": "/dev/sda1",
+        "volume_size": 60,
+        "volume_type": "gp2",
+        "delete_on_termination": true
+        }]
+    }],
+    "provisioners": [{
+            "type": "shell",
+            "inline": "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done"
+        },
+	{
+            "type": "ansible",
+	    "user": "centos",
+            "playbook_file": "../ansible/yum.yml"
+        },
+	{
+            "type": "ansible",
+	    "user": "centos",
+            "playbook_file": "../ansible/hardening.yml",
+	    "extra_arguments": [
+	      "--extra-vars",
+	      "ssh_client_password_login=false ssh_server_password_login=false sshd_authenticationmethods=publickey"
+	    ]
+        },
+        {
+            "type": "ansible",
+	    "user": "centos",
+            "playbook_file": "../ansible/create_log.yml",
+            "extra_arguments": ["--extra-vars", "vm_name={{ user `ami_name` }}"]
+        },
+
+        {
+            "type": "ansible",
+	    "user": "centos",
+            "playbook_file": "../ansible/aide.yml"
+        },
+        {
+            "type": "ansible",
+	    "user": "centos",
+            "playbook_file": "ansible/build-image-fabriq.yml"
+        }]
+}
+
+

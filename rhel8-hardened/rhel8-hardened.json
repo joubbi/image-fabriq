@@ -1,0 +1,75 @@
+{
+  "variables": {
+    "vm_name": "rhel8-hardened.qcow2"
+  },
+  "builders": [
+    {
+      "accelerator": "kvm",
+      "qemu_binary": "/usr/bin/kvm",
+      "boot_command": [
+        "<up><wait><tab><wait> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8-hardened-ks.cfg<enter><wait>"
+      ],
+      "boot_wait": "5s",
+      "cpus": "2",
+      "memory": "2048",
+      "disk_interface": "virtio-scsi",
+      "disk_size": "51200M",
+      "disk_compression": "true",
+      "format": "qcow2",
+      "headless": true,
+      "host_port_max": 2229,
+      "host_port_min": 2222,
+      "http_directory": "http",
+      "http_port_max": 10089,
+      "http_port_min": 10082,
+      "iso_checksum": "sha256:1f78e705cd1d8897a05afa060f77d81ed81ac141c2465d4763c0382aa96cadd0",
+      "iso_url": "../iso/rhel-8.5-x86_64-dvd.iso",
+      "iso_target_path": "../iso/",
+      "net_device": "virtio-net",
+      "output_directory": "image",
+      "shutdown_command": "echo 'packer' | shutdown -P now",
+      "ssh_password": "Changeme123",
+      "ssh_port": 22,
+      "ssh_timeout": "1200s",
+      "ssh_username": "root",
+      "type": "qemu",
+      "vm_name": "{{user `vm_name`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/create_user01.yml"
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/yum.yml"
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/hardening.yml"
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/create_log.yml",
+      "extra_arguments": ["--extra-vars", "vm_name={{ user `vm_name` }}"]
+    },
+    {
+      "type": "ansible",
+      "user": "root",
+      "playbook_file": "../ansible/aide.yml"
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "checksum",
+      "checksum_types": ["sha512"],
+      "output": "image/{{user `vm_name`}}_{{.ChecksumType}}.checksum"
+    }
+  ]
+}
+

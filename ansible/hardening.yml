@@ -1,0 +1,289 @@
+---
+# Hardening is done with https://github.com/dev-sec/ansible-collection-hardening
+# and custom tasks in order to be CIS level 1 compliant.
+# All tasks are idempotent and can be run on a system both during and after install.
+
+- name: Hardening stuff
+  hosts: default
+  become: yes
+  collections:
+    - devsec.hardening
+
+  roles:
+    - role: devsec.hardening.os_hardening
+    - role: devsec.hardening.ssh_hardening
+      vars:
+        ssh_client_password_login: true
+        ssh_server_password_login: true
+        sshd_authenticationmethods: 'publickey password'
+        ssh_max_sessions: 2          # https://cisofy.com/lynis/controls/SSH-7408/
+        ssh_print_last_log: true
+        ssh_max_startups: '10:30:60' # CIS 5.2.21
+        sftp_enabled: true           # Ansible warns if this is not enabled
+        os_auth_lockout_time: 900    # CIS 5.4.2
+        os_auth_pw_max_age: 365      # CIS 5.5.1.1
+        os_security_auto_logout: 900 # 5.6.3 Ensure default user shell timeout is 900 seconds or less
+
+  tasks:
+      # Check if machine was done with a kickstart with image-fabriq.
+    - name: Check if /tmp is mounted as /dev/mapper/vg_root-tmp
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^/dev/mapper/vg_root-tmp /tmp'
+        state: absent
+      check_mode: yes
+      changed_when: false
+      register: imagefabriq_kickstart
+
+      # This is not done earlier in the kickstart since packer needs to execute stuff in /tmp.
+      # Doing this task on an AWS AMI is no good, you can't login...
+    - name: Set noexec on /tmp - CIS 1.1.2-1.1.5
+      lineinfile:
+        path: /etc/fstab
+        regexp: '/dev/mapper/vg_root-tmp'
+        line: '/dev/mapper/vg_root-tmp /tmp                    xfs     nodev,nosuid,noexec    0 0'
+      when: imagefabriq_kickstart.found
+
+    - name: Blacklist usb-storage kernel module - CIS 1.1.23
+      copy:
+        content: 'install usb-storage /bin/true'
+        dest: /etc/modprobe.d/blacklist-usb-storage.conf
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Blacklist firewire kernel modules
+      copy:
+        src: etc/modprobe.d/blacklist-firewire.conf
+        dest: /etc/modprobe.d/blacklist-firewire.conf
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Copy /etc/sudoers.d/cis to configure sudo - CIS 1.3
+      copy:
+        src: etc/sudoers.d/cis
+        dest: /etc/sudoers.d/cis
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Check if /boot/grub2/ exists
+      stat:
+        path: /boot/grub2/
+      register: grub2
+
+    - name: Check if grub.cfg exists
+      stat:
+        path: /boot/grub2/grub.cfg
+      register: grubcfg
+
+    - name: Check if grubenv exists
+      stat:
+        path: /boot/grub2/grubenv
+      register: grubenv
+
+    - name: Ensure permissions on /boot/grub2/grub.cfg are configured - CIS 1.5.1
+      ansible.builtin.file:
+        path: /boot/grub2/grub.cfg
+        owner: root
+        group: root
+        mode: '0600'
+      when: grubcfg.stat.exists
+
+    - name: Ensure permissions on /boot/grub2/grubenv are configured - CIS 1.5.1
+      ansible.builtin.file:
+        path: /boot/grub2/grubenv
+        owner: root
+        group: root
+        mode: '0600'
+      when: grubenv.stat.exists
+
+    - name: Copy /boot/grub2/user.cfg bootloader password - CIS 1.5.3
+      copy:
+        src: user.cfg
+        dest: /boot/grub2/user.cfg
+        owner: root
+        group: root
+        mode: '0600'
+      when: grub2.stat.exists
+
+      # This task is CIS level 2, not idempotent and intrusive.
+      #    - name: Ensure system-wide crypto policy is FUTURE - CIS 1.11
+      #      command: update-crypto-policies --set FUTURE
+      #      when: ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_major_version'] == "8"
+
+      # This task is not idempotent. Disabling it since the virtual machine doesn't have any radios anyway.
+      #    - name: Disable wireless interfaces - CIS 3.5
+      #      command: nmcli radio all off
+      #      ignore_errors: yes
+
+    - name: Ensure rsyslog default file permissions configured - CIS 4.2.1.3
+      copy:
+        content: '$FileCreateMode 0640'
+        dest: /etc/rsyslog.d/cis.conf
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Configure journald - CIS 4.2.2
+      copy:
+        src: etc/systemd/journald.conf
+        dest: /etc/systemd/journald.conf
+        owner: root
+        group: root
+        mode: '0600'
+
+      # CIS 4.2.3 wants to fiddle with group permissions as well.
+      # Red Hat recommends against changing permissions, so I change only for other.
+    - name: Ensure permissions on all logfiles are configured - CIS 4.2.3
+      ansible.builtin.file:
+        path: /var/log
+        recurse: yes
+        mode: o-rwx
+
+    - name: Find private SSH host keys.
+      find:
+        paths: /etc/ssh
+        patterns: 'ssh_host_*_key'
+      register: ssh_keys_private
+
+    - name: Ensure permissions on SSH private host key files are configured - CIS 5.2.3
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: '0600'
+      with_items: "{{ ssh_keys_private.files }}"
+
+    - name: Find public SSH host keys.
+      find:
+        paths: /etc/ssh
+        patterns: 'ssh_host_*_key.pub'
+      register: ssh_keys_public
+
+    - name: Ensure permissions on SSH public host key files are configured - CIS 5.2.4
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: '0644'
+      with_items: "{{ ssh_keys_public.files }}"
+
+      # This is not how you are supposed to configure PAM in RHEL8,
+      # but we do it according to CIS until someone comes with a better idea.
+      #    - name: Configure PAM password-auth - CIS 5.4
+      #      copy:
+      #        src: etc/pam.d/password-auth
+      #        dest: /etc/pam.d/password-auth
+      #        owner: root
+      #        group: root
+      #        mode: '0644'
+      #      when: ansible_facts['os_family'] == "RedHat"
+
+      # This is not how you are supposed to configure PAM in RHEL8,
+      # but we do it according to CIS until someone comes with a better idea.
+      #    - name: Configure PAM system-auth - CIS 5.4
+      #      copy:
+      #        src: etc/pam.d/system-auth
+      #        dest: /etc/pam.d/system-auth
+      #        owner: root
+      #        group: root
+      #        mode: '0644'
+      #      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Ensure password creation requirements are configured - CIS 5.4.1
+      copy:
+        src: etc/security/pwquality.conf
+        dest: /etc/security/pwquality.conf
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Ensure inactive password lock is 30 days - CIS 5.5.1.4
+      #      command: useradd -D -f 30
+      lineinfile:
+        path: /etc/default/useradd
+        regexp: '^INACTIVE='
+        line: INACTIVE=30
+
+    - name: Ensure access to the su command is restricted - CIS 5.7
+      copy:
+        src: etc/pam.d/su
+        dest: /etc/pam.d/su
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Ensure permissions on /etc/passwd are configured - CIS 6.1.2
+      ansible.builtin.file:
+        path: /etc/passwd
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure permissions on /etc/shadow are configured - CIS 6.1.3
+      ansible.builtin.file:
+        path: /etc/shadow
+        owner: root
+        mode: o-rwx,g-wx
+
+    - name: Ensure permissions on /etc/group are configured - CIS 6.1.4
+      ansible.builtin.file:
+        path: /etc/group
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure permissions on /etc/gshadow are configured - CIS 6.1.5
+      ansible.builtin.file:
+        path: /etc/gshadow
+        owner: root
+        mode: o-rwx,g-rw
+
+    - name: Ensure permissions on /etc/passwd- are configured - CIS 6.1.6
+      ansible.builtin.file:
+        path: /etc/passwd-
+        owner: root
+        group: root
+        mode: u-x,go-rwx
+
+    - name: Ensure permissions on /etc/shadow- are configured - CIS 6.1.7
+      ansible.builtin.file:
+        path: /etc/shadow-
+        owner: root
+        group: root
+        mode: u-x,go-rwx
+
+    - name: Ensure permissions on /etc/group- are configured - CIS 6.1.8
+      ansible.builtin.file:
+        path: /etc/group-
+        owner: root
+        group: root
+        mode: u-x,go-wx
+
+    - name: Ensure permissions on /etc/gshadow- are configured - CIS 6.1.9
+      ansible.builtin.file:
+        path: /etc/gshadow-
+        owner: root
+        group: root
+        mode: o-rwx,g-rw
+
+      # Images in the cloud might not have firewalld installed
+      # since they have other firewalling mechanisms instead.
+    - name: Check if /etc/firewalld/firewalld.conf exists
+      stat:
+        path: /etc/firewalld/firewalld.conf
+      register: firewalldconf
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1796055
+    - name: Disable firewalld zone drifting
+      lineinfile:
+        path: /etc/firewalld/firewalld.conf
+        regexp: '^AllowZoneDrifting='
+        line: AllowZoneDrifting=no
+      when:
+        - ansible_facts['os_family'] == "RedHat"
+        - firewalldconf.stat.exists

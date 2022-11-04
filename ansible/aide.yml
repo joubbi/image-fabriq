@@ -1,0 +1,16 @@
+---
+# CIS 1.4 Filesystem Integrity Checking
+#
+# AIDE is a file integrity checking tool, similar in nature to Tripwire. While it cannot prevent
+# intrusions, it can detect unauthorized changes to configuration files by alerting when the
+# files are changed. When setting up AIDE, decide internally what the site policy will be
+# concerning integrity checking. Review the AIDE quick start guide and AIDE documentation
+# before proceeding.
+
+- name: Install and configure AIDE
+  hosts: default
+  become: yes
+  roles:
+    - role: ahuffman.aide
+  vars:
+    aide_update_db: true

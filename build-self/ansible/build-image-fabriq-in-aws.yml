@@ -1,0 +1,66 @@
+---
+# Create and launch image-fabriq with it's dependencies in AWS.
+#
+# Run like this: ansible-playbook -i inventory build-image-fabriq-in-aws.yml
+#
+- name: Create vm for image-fabriq
+  hosts:
+    - localhost
+  gather_facts: true
+  collections:
+    - community.aws
+
+  tasks:
+
+    - name: Create AWS EC2 instance running Centos 8
+      connection: local
+      community.aws.ec2_instance:
+        name: "image-fabriq-{{ ansible_date_time.iso8601 }}"
+        key_name: aws-stockholm
+        instance_type: t3.small
+        image_id: ami-0e201bc52c64d7b5a
+        region: eu-north-1
+        state: running
+        wait: yes
+        tags:
+          Environment: Testing
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 60
+              delete_on_termination: true
+      register: ec2
+
+      #    - ansible.builtin.debug:
+      #        var: ec2.instances[0]
+      #      loop: "{{ ec2.instances }}"
+
+    - name: Add new instance public IP to host group
+      add_host:
+        hostname: "{{ ec2.instances[0].public_ip_address }}"
+        groupname: launched
+      loop: "{{ ec2.instances }}"
+
+- hosts: launched
+  name: configuration play
+  #  user: centos
+  gather_facts: true
+
+  tasks:
+    - name: Install HashiCorp Packer
+      include_tasks: install-packer.yml
+
+    - name: Install Ansible
+      include_tasks: install-ansible.yml
+
+    - name: Install KVM
+      include_tasks: install-kvm.yml
+
+    - name: Unpack image-fabriq
+      include_tasks: unpack-image-fabriq.yml
+
+    - name: Configure Packer kvm path
+      ansible.builtin.command: image-fabriq-main/set-kvm-path.sh
+
+    - name: Configure Packer turbo
+      ansible.builtin.command: image-fabriq-main/set-turbo.sh 

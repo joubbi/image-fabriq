@@ -1,0 +1,102 @@
+{
+  "variables": {
+    "vm_name": "debian11.qcow2"
+  },
+  "builders": [
+    {
+      "accelerator": "kvm",
+      "qemu_binary": "/usr/bin/kvm",
+      "boot_command": [
+        "<esc><wait>",
+        "install <wait>",
+        " preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian11-preseed.cfg <wait>",
+        "debian-installer=en_US.UTF-8 <wait>",
+        "auto <wait>",
+        "locale=sv_SE.UTF-8 <wait>",
+        "kbd-chooser/method=sv <wait>",
+        "keyboard-configuration/xkb-keymap=sv <wait>",
+        "netcfg/get_hostname=debian11 <wait>",
+        "netcfg/get_domain=company.lan <wait>",
+        "fb=false <wait>",
+        "debconf/frontend=noninteractive <wait>",
+        "console-setup/ask_detect=false <wait>",
+        "console-keymaps-at/keymap=sv <wait>",
+        "grub-installer/bootdev=/dev/sda <wait>",
+        "<enter><wait>"
+      ],
+      "boot_wait": "5s",
+      "cpus": "2",
+      "memory": "2048",
+      "disk_interface": "virtio-scsi",
+      "disk_size": "51200M",
+      "disk_compression": "true",
+      "format": "qcow2",
+      "headless": true,
+      "host_port_max": 2229,
+      "host_port_min": 2222,
+      "http_directory": "http",
+      "http_port_max": 10089,
+      "http_port_min": 10082,
+      "iso_checksum": "sha256:45c9feabba213bdc6d72e7469de71ea5aeff73faea6bfb109ab5bad37c3b43bd",
+      "iso_urls": [
+	"../iso/debian-11.2.0-amd64-netinst.iso",
+      	"https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-11.2.0-amd64-netinst.iso"
+      ],
+      "iso_target_path": "../iso/",
+      "net_device": "virtio-net",
+      "output_directory": "image",
+      "ssh_port": 22,
+      "ssh_timeout": "1200s",
+      "ssh_username": "user01",
+      "ssh_password": "changeme",
+      "type": "qemu",
+      "vm_name": "{{user `vm_name`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "ansible",
+      "user": "user01",
+      "playbook_file": "../ansible/create_nic.yml",
+      "extra_arguments": [
+        "--extra-vars",
+        "ansible_become_pass=changeme"
+      ]
+    },
+    {
+      "type": "ansible",
+      "user": "user01",
+      "playbook_file": "../ansible/create_log.yml",
+      "extra_arguments": [
+	"--extra-vars",
+	"ansible_become_pass=changeme vm_name={{ user `vm_name` }}"
+      ]
+    },
+    {
+      "type": "ansible",
+      "user": "user01",
+      "playbook_file": "../ansible/shutdown.yml",
+      "extra_arguments": [
+        "--extra-vars",
+        "ansible_become_pass=changeme"
+      ]
+    },
+    {
+      "type": "ansible",
+      "user": "user01",
+      "playbook_file": "../ansible/create_user01.yml",
+      "extra_arguments": [
+        "--extra-vars",
+       	"ansible_become_pass=changeme"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "checksum",
+      "checksum_types": ["sha512"],
+      "output": "image/{{user `vm_name`}}_{{.ChecksumType}}.checksum"
+    }
+  ]
+}
+

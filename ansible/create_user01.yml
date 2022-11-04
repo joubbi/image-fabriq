@@ -1,0 +1,21 @@
+---
+# Images installed and configured with the root user need a "normal" user as well.
+# Logging in with root over SSH is not permitted.
+# So we create a user named user01 that can do sudo.
+
+- name: Create user user01
+  hosts: default
+  become: yes
+
+  tasks:
+    - name: Create user user01
+      ansible.builtin.user:
+        name: user01
+        # create new password with 'mkpasswd --method=sha-512'
+        # password: changeme
+        password: $6$8NGoAYZo8$gP1oVxR7tKQ7V46c.f1ZkKDHxE6i743pAU7k2HamsxnCocCp8hNDrV4boLPg5lTKVeMQt6tSOTOZeoII8ONyo/
+        groups: wheel
+      when: ansible_facts['os_family'] != "Debian"
+
+    - name: Expire password
+      ansible.builtin.command: chage -d 0 user01

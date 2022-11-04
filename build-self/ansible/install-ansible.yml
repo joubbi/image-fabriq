@@ -1,0 +1,47 @@
+---
+# Install Ansible and it's dependencies.
+
+- name: Install unzip
+  yum:
+    name: unzip
+    state: latest
+  become: yes
+  when: ansible_facts['os_family'] == "RedHat"
+
+  # Ansible requires sshpass, sshpass requires EPEL.
+- name: Install EPEL repo
+  yum:
+    name: epel-release
+    state: present
+  become: yes
+  when: ansible_distribution == 'CentOS'
+
+- name: Install sshpass
+  yum:
+    name: sshpass
+    state: latest
+  become: yes
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: install Ansible
+  yum:
+    name: ansible
+    state: latest
+  become: yes
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Copy files to /tmp/files/
+  ansible.builtin.copy:
+    src: files
+    dest: /tmp/
+
+- name: Install devsec.hardening Ansible collection
+  ansible.builtin.command: ansible-galaxy collection install -r requirements.yml
+  args:
+    chdir: /tmp/files/
+    creates: ~/.ansible/collections/ansible_collections/devsec/hardening
+
+- name: Delete /tmp/files/
+  ansible.builtin.file:
+    path: /tmp/files/
+    state: absent

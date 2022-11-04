@@ -1,0 +1,6 @@
+---
+
+- name: Unpack image-fabriq
+  ansible.builtin.unarchive:
+    src: files/image-fabriq-main.zip
+    dest: .
