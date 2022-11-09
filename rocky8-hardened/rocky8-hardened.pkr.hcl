@@ -26,9 +26,12 @@ variable "vm_name" {
 # https://www.packer.io/docs/templates/hcl_templates/blocks/source
 source "qemu" "rocky8-hardened" {
   accelerator      = "kvm"
-  boot_command     = ["<up><wait><tab><wait> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky8-hardened-ks.cfg<enter><wait>"]
+#  boot_command     = ["<up><wait><tab><wait> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky8-hardened-ks.cfg<enter><wait>"]
+  boot_command     = ["<esc><wait>", "vmlinuz initrd=initrd.img inst.ks=cdrom:sr1:rocky8-hardened-ks.cfg", "<enter>"]
   boot_wait        = "5s"
   cpus             = "2"
+  cd_files         = ["http/rocky8-hardened-ks.cfg"]
+  cd_label         = "OEMDRV"
   disk_compression = "true"
   disk_interface   = "virtio-scsi"
   disk_size        = "51200M"
@@ -36,9 +39,9 @@ source "qemu" "rocky8-hardened" {
   headless         = true
   host_port_max    = 2229
   host_port_min    = 2222
-  http_directory   = "http"
-  http_port_max    = 10089
-  http_port_min    = 10082
+#  http_directory   = "http"
+#  http_port_max    = 10089
+#  http_port_min    = 10082
   iso_checksum     = "sha256:1d48e0af63d07ff4e582a1819348e714c694e7fd33207f48879c2bc806960786"
   iso_target_path  = "../iso/"
   iso_urls         = ["../iso/Rocky-8.6-x86_64-dvd1.iso", "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.6-x86_64-dvd1.iso"]
