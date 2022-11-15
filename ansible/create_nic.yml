@@ -1,11 +1,11 @@
 ---
 - name: Create dhcp enabled network interface
   hosts: default
-  become: yes
+  become: true
 
   tasks:
     - name: Create dhcp enabled network interface
-      copy:
+      ansible.builtin.copy:
         src: enp1s0
         dest: /etc/network/interfaces.d/enp1s0
         owner: root

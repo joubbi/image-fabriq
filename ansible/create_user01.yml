@@ -5,7 +5,7 @@
 
 - name: Create user user01
   hosts: default
-  become: yes
+  become: true
 
   tasks:
     - name: Create user user01

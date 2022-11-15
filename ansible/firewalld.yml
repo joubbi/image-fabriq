@@ -1,11 +1,11 @@
 ---
 - name: Install and enable firewalld - CIS 3.4.2.1
   hosts: default
-  become: yes
+  become: true
 
   tasks:
     - name: Install firewalld
-      yum:
+      ansible.builtin.yum:
         name: firewalld
         state: latest
       when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
@@ -18,4 +18,4 @@
     - name: Enable service firewalld
       ansible.builtin.service:
         name: firewalld
-        enabled: yes
+        enabled: true

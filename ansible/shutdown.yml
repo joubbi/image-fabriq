@@ -1,8 +1,8 @@
 ---
 - name: Shutdown machine in one minute from now.
   hosts: default
-  become: yes
+  become: true
 
   tasks:
     - name: Shutdown in one minute from now.
-      command: shutdown -P +1
+      ansible.builtin.command: shutdown -P +1

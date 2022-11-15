@@ -5,7 +5,7 @@
 
 - name: Hardening stuff
   hosts: default
-  become: yes
+  become: true
   collections:
     - devsec.hardening
 
@@ -27,25 +27,25 @@
   tasks:
       # Check if machine was done with a kickstart with image-fabriq.
     - name: Check if /tmp is mounted as /dev/mapper/vg_root-tmp
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/fstab
         regexp: '^/dev/mapper/vg_root-tmp /tmp'
         state: absent
-      check_mode: yes
+      check_mode: true
       changed_when: false
       register: imagefabriq_kickstart
 
       # This is not done earlier in the kickstart since packer needs to execute stuff in /tmp.
       # Doing this task on an AWS AMI is no good, you can't login...
     - name: Set noexec on /tmp - CIS 1.1.2-1.1.5
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/fstab
         regexp: '/dev/mapper/vg_root-tmp'
         line: '/dev/mapper/vg_root-tmp /tmp                    xfs     nodev,nosuid,noexec    0 0'
       when: imagefabriq_kickstart.found
 
     - name: Blacklist usb-storage kernel module - CIS 1.1.23
-      copy:
+      ansible.builtin.copy:
         content: 'install usb-storage /bin/true'
         dest: /etc/modprobe.d/blacklist-usb-storage.conf
         owner: root
@@ -53,7 +53,7 @@
         mode: '0600'
 
     - name: Blacklist firewire kernel modules
-      copy:
+      ansible.builtin.copy:
         src: etc/modprobe.d/blacklist-firewire.conf
         dest: /etc/modprobe.d/blacklist-firewire.conf
         owner: root
@@ -61,7 +61,7 @@
         mode: '0600'
 
     - name: Copy /etc/sudoers.d/cis to configure sudo - CIS 1.3
-      copy:
+      ansible.builtin.copy:
         src: etc/sudoers.d/cis
         dest: /etc/sudoers.d/cis
         owner: root
@@ -69,17 +69,17 @@
         mode: '0600'
 
     - name: Check if /boot/grub2/ exists
-      stat:
+      ansible.builtin.stat:
         path: /boot/grub2/
       register: grub2
 
     - name: Check if grub.cfg exists
-      stat:
+      ansible.builtin.stat:
         path: /boot/grub2/grub.cfg
       register: grubcfg
 
     - name: Check if grubenv exists
-      stat:
+      ansible.builtin.stat:
         path: /boot/grub2/grubenv
       register: grubenv
 
@@ -100,7 +100,7 @@
       when: grubenv.stat.exists
 
     - name: Copy /boot/grub2/user.cfg bootloader password - CIS 1.5.3
-      copy:
+      ansible.builtin.copy:
         src: user.cfg
         dest: /boot/grub2/user.cfg
         owner: root
@@ -119,7 +119,7 @@
       #      ignore_errors: yes
 
     - name: Ensure rsyslog default file permissions configured - CIS 4.2.1.3
-      copy:
+      ansible.builtin.copy:
         content: '$FileCreateMode 0640'
         dest: /etc/rsyslog.d/cis.conf
         owner: root
@@ -127,7 +127,7 @@
         mode: '0600'
 
     - name: Configure journald - CIS 4.2.2
-      copy:
+      ansible.builtin.copy:
         src: etc/systemd/journald.conf
         dest: /etc/systemd/journald.conf
         owner: root
@@ -139,11 +139,11 @@
     - name: Ensure permissions on all logfiles are configured - CIS 4.2.3
       ansible.builtin.file:
         path: /var/log
-        recurse: yes
+        recurse: true
         mode: o-rwx
 
     - name: Find private SSH host keys.
-      find:
+      ansible.builtin.find:
         paths: /etc/ssh
         patterns: 'ssh_host_*_key'
       register: ssh_keys_private
@@ -157,7 +157,7 @@
       with_items: "{{ ssh_keys_private.files }}"
 
     - name: Find public SSH host keys.
-      find:
+      ansible.builtin.find:
         paths: /etc/ssh
         patterns: 'ssh_host_*_key.pub'
       register: ssh_keys_public
@@ -193,7 +193,7 @@
       #      when: ansible_facts['os_family'] == "RedHat"
 
     - name: Ensure password creation requirements are configured - CIS 5.4.1
-      copy:
+      ansible.builtin.copy:
         src: etc/security/pwquality.conf
         dest: /etc/security/pwquality.conf
         owner: root
@@ -203,13 +203,13 @@
 
     - name: Ensure inactive password lock is 30 days - CIS 5.5.1.4
       #      command: useradd -D -f 30
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/default/useradd
         regexp: '^INACTIVE='
         line: INACTIVE=30
 
     - name: Ensure access to the su command is restricted - CIS 5.7
-      copy:
+      ansible.builtin.copy:
         src: etc/pam.d/su
         dest: /etc/pam.d/su
         owner: root
@@ -274,13 +274,13 @@
       # Images in the cloud might not have firewalld installed
       # since they have other firewalling mechanisms instead.
     - name: Check if /etc/firewalld/firewalld.conf exists
-      stat:
+      ansible.builtin.stat:
         path: /etc/firewalld/firewalld.conf
       register: firewalldconf
 
     # https://bugzilla.redhat.com/show_bug.cgi?id=1796055
     - name: Disable firewalld zone drifting
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/firewalld/firewalld.conf
         regexp: '^AllowZoneDrifting='
         line: AllowZoneDrifting=no

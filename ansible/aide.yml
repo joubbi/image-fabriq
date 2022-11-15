@@ -9,7 +9,7 @@
 
 - name: Install and configure AIDE
   hosts: default
-  become: yes
+  become: true
   roles:
     - role: ahuffman.aide
   vars:

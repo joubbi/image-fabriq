@@ -14,10 +14,10 @@
         dest: /var/log/image-fabriq.log
         owner: root
         mode: '0600'
-      become: yes
+      become: true
 
     - name: Write Ansible variables to /var/log/image-fabriq.log
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /var/log/image-fabriq.log
         block: |
 
@@ -27,4 +27,4 @@
           Name of image:
           "{{ vm_name }}"
 
-      become: yes
+      become: true
