@@ -1,0 +1,17 @@
+---
+# The CIS hardening profile enables remote logging.
+# We want to control that our selves.
+
+- name: Configure rsyslog
+  hosts: default
+  become: true
+
+  tasks:
+
+    - name: Copy /etc/rsyslog.conf
+      ansible.builtin.copy:
+        src: etc/rsyslog.conf
+        dest: /etc/rsyslog.conf
+        owner: root
+        group: root
+        mode: '0600'

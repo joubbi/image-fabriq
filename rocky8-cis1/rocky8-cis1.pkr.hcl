@@ -83,6 +83,14 @@ build {
   provisioner "ansible" {
     # https://github.com/hashicorp/packer-plugin-ansible/issues/69
     ansible_ssh_extra_args = [ "-oHostKeyAlgorithms=+ssh-rsa -oPubkeyAcceptedKeyTypes=+ssh-rsa" ]
+    playbook_file = "../ansible/configure_rsyslog.yml"
+    user          = "${local.ssh_username}"
+    extra_arguments = [ "--extra-vars", "ansible_become_pass=${local.new_ssh_pass}" ]
+  }
+
+  provisioner "ansible" {
+    # https://github.com/hashicorp/packer-plugin-ansible/issues/69
+    ansible_ssh_extra_args = [ "-oHostKeyAlgorithms=+ssh-rsa -oPubkeyAcceptedKeyTypes=+ssh-rsa" ]
     playbook_file = "../ansible/yum.yml"
     user          = "${local.ssh_username}"
     extra_arguments = [ "--extra-vars", "ansible_become_pass=${local.new_ssh_pass}" ]
