@@ -1,0 +1,27 @@
+---
+# Disable firewalld zone drifting.
+# Having it enabled gives a warning in /var/log/messages everytime firewalld is reloaded.
+
+- name: Fix firewalld
+  hosts: default
+  become: true
+
+
+  tasks:
+
+      # Images in the cloud might not have firewalld installed
+      # since they have other firewalling mechanisms instead.
+    - name: Check if /etc/firewalld/firewalld.conf exists
+      ansible.builtin.stat:
+        path: /etc/firewalld/firewalld.conf
+      register: firewalldconf
+
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1796055
+    - name: Disable firewalld zone drifting
+      ansible.builtin.lineinfile:
+        path: /etc/firewalld/firewalld.conf
+        regexp: '^AllowZoneDrifting='
+        line: AllowZoneDrifting=no
+      when:
+        - ansible_facts['os_family'] == "RedHat"
+        - firewalldconf.stat.exists
