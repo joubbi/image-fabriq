@@ -1,0 +1,18 @@
+---
+- name: Create dhcp enabled network interface
+  hosts: default
+  become: true
+
+  tasks:
+    - name: Create dhcp enabled network interface
+      ansible.builtin.copy:
+        src: etc/netplan/01-netcfg.yaml
+        dest: /etc/netplan/01-netcfg.yaml
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Remove installation config used during install
+      ansible.builtin.file:
+        path: /etc/netplan/00-installer-config.yaml
+        state: absent

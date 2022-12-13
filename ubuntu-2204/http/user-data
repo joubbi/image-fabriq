@@ -1,0 +1,24 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: se
+  storage:
+    layout:
+      name: lvm
+  identity:
+    hostname: ubuntu-2204
+    username: ubuntu
+    password: $6$idontlikesalt$d/X7xKjZ59WwK44X5uEMDFdjaYuAhV4JOi4mESN0JgPXdfcy9hOc0gdPvNU.8hflSjZC2COxJ7oESf3XQg6K9/
+  ssh:
+    install-server: true
+    allow-pw: true
+  user-data:
+    disable_root: true
+  packages:
+    - vim
+  package_update: true
+  updates: all
+#  late-commands:
+#    - echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ubuntu
