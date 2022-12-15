@@ -8,7 +8,7 @@ autoinstall:
     layout:
       name: lvm
   identity:
-    hostname: ubuntu-2204
+    hostname: ubuntu-2004
     username: ubuntu
     password: $6$idontlikesalt$d/X7xKjZ59WwK44X5uEMDFdjaYuAhV4JOi4mESN0JgPXdfcy9hOc0gdPvNU.8hflSjZC2COxJ7oESf3XQg6K9/
   ssh:
